@@ -4,6 +4,7 @@ declare(strict_types=1);
 // Handles delete / change-status for one or many leads (single-lead buttons post here too).
 require dirname(__DIR__) . '/_bootstrap.php';
 admin_init();
+lh_rm_restore();
 $user = require_login();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {

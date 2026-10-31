@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/_bootstrap.php';
 admin_init();
+lh_rm_restore();
 $user = require_login();
 
 $now = utc_now();
@@ -40,6 +41,63 @@ $dueList = db_all(
 $maxSite = max(1, ...array_map(static fn($r) => (int) $r['total'], $sites ?: [['total' => 1]]));
 $total = max(1, (int) $s['total']);
 
+// 7-day lead trend (read-only; the chart simply hides if anything about it fails)
+$trend = null;
+try {
+    $cols = [];
+    $args = [];
+    $days = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $from = local_midnight_utc(-$i);
+        if ($i === 0) {
+            $cols[] = 'COALESCE(SUM(created_at >= ? AND created_at <= ?), 0)';
+            array_push($args, $from, $now);
+        } else {
+            $cols[] = 'COALESCE(SUM(created_at >= ? AND created_at < ?), 0)';
+            array_push($args, $from, local_midnight_utc(-$i + 1));
+        }
+        $days[] = local_today(-$i);
+    }
+    $tr = db_one('SELECT ' . implode(', ', array_map(static fn($c, $k) => $c . ' AS d' . $k, $cols, array_keys($cols))) . ' FROM leads', $args);
+    if (is_array($tr)) {
+        $trend = [];
+        foreach ($days as $k => $d) {
+            $ts = strtotime((string) $d);
+            $trend[] = ['label' => $ts ? date('D', $ts) : '', 'full' => $ts ? date('j M', $ts) : '', 'n' => (int) ($tr['d' . $k] ?? 0)];
+        }
+    }
+} catch (Throwable $e) {
+    $trend = null;
+}
+$trendMax = $trend ? max(1, ...array_column($trend, 'n')) : 1;
+$trendSum = $trend ? array_sum(array_column($trend, 'n')) : 0;
+
+function lxd_ico(string $k): string
+{
+    $p = [
+        'total' => '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+        'today' => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+        'new' => '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+        'awaiting' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        'due' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    ];
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . ($p[$k] ?? '') . '</svg>';
+}
+function lxd_initials(?string $name, ?string $fallback = ''): string
+{
+    $src = trim((string) $name) !== '' ? trim((string) $name) : trim((string) $fallback);
+    if ($src === '') {
+        return '?';
+    }
+    $parts = preg_split('/[\s@._-]+/', $src, -1, PREG_SPLIT_NO_EMPTY) ?: [$src];
+    $first = static fn(string $w): string => function_exists('mb_substr') ? mb_strtoupper(mb_substr($w, 0, 1)) : strtoupper(substr($w, 0, 1));
+    $out = $first($parts[0]);
+    if (count($parts) > 1) {
+        $out .= $first($parts[1]);
+    }
+    return $out;
+}
+
 $cards = [
     ['total', 'Total leads', $s['total'], 'leads.php', 'All time, every website'],
     ['today', "Today's leads", $s['today'], 'leads.php?from=' . local_today() . '&to=' . local_today(), 'Since midnight'],
@@ -64,7 +122,7 @@ page_header('Dashboard', 'dashboard');
 <section class="stats" data-testid="dashboard-stats">
   <?php foreach ($cards as $i => [$key, $label, $val, $href, $hint]): ?>
     <a class="stat stat-<?= e($key) ?> reveal" href="<?= e($href) ?>" data-delay="<?= $i ?>" data-testid="stat-<?= e($key) ?>">
-      <span class="stat-label"><?= e($label) ?></span>
+      <span class="stat-top"><span class="stat-label"><?= e($label) ?></span><span class="stat-ico"><?= lxd_ico($key) ?></span></span>
       <span class="stat-value" data-testid="stat-<?= e($key) ?>-value"><?= number_format((int) $val) ?></span>
       <span class="stat-hint"><?= e($hint) ?></span>
     </a>
@@ -72,6 +130,21 @@ page_header('Dashboard', 'dashboard');
 </section>
 
 <div class="grid-2">
+  <div class="stack-lg">
+  <?php if ($trend): ?>
+  <section class="panel" data-testid="lead-trend">
+    <div class="panel-head"><h2>Leads, last 7 days</h2><span class="panel-sub"><?= number_format($trendSum) ?> total</span></div>
+    <div class="trend" role="img" aria-label="Leads received per day over the last 7 days">
+      <?php foreach ($trend as $k => $t): ?>
+        <div class="trend-col<?= $k === count($trend) - 1 ? ' is-today' : '' ?>" tabindex="0">
+          <span class="trend-tip"><?= (int) $t['n'] ?> &middot; <?= e($t['full']) ?></span>
+          <div class="trend-bar"><span style="height:<?= $t['n'] > 0 ? max(4, (int) round($t['n'] / $trendMax * 100)) : 0 ?>%;animation-delay:<?= $k * 50 ?>ms"></span></div>
+          <span class="trend-lbl"><?= e($t['label']) ?></span>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </section>
+  <?php endif; ?>
   <section class="panel" data-testid="website-stats">
     <div class="panel-head"><h2>By website</h2><?php if (is_admin()): ?><a href="websites.php" class="link">Manage websites</a><?php endif; ?></div>
     <?php if (!$sites): ?>
@@ -96,6 +169,7 @@ page_header('Dashboard', 'dashboard');
     </table></div>
     <?php endif; ?>
   </section>
+  </div>
 
   <div class="stack-lg">
     <section class="panel" data-testid="pipeline-panel">
@@ -135,7 +209,7 @@ page_header('Dashboard', 'dashboard');
     <?php foreach ($recent as $r): ?>
       <tr>
         <td data-label="Lead"><a class="mono" href="lead.php?id=<?= e(urlencode($r['public_id'])) ?>" data-testid="recent-lead-link-<?= e($r['public_id']) ?>"><?= e($r['public_id']) ?></a></td>
-        <td data-label="Contact"><strong><?= e($r['name'] ?: '—') ?></strong><div class="muted small"><?= e($r['email'] ?: $r['phone'] ?: '') ?></div></td>
+        <td data-label="Contact"><div class="cell-user"><span class="avatar avatar-sm" aria-hidden="true"><?= e(lxd_initials($r['name'], $r['email'])) ?></span><div><strong><?= e($r['name'] ?: '—') ?></strong><div class="muted small"><?= e($r['email'] ?: $r['phone'] ?: '') ?></div></div></div></td>
         <td data-label="Website"><?= e($r['website']) ?></td>
         <td data-label="Channel"><?= channel_badge($r['channel']) ?></td>
         <td data-label="Status"><?= status_badge($r['status']) ?></td>

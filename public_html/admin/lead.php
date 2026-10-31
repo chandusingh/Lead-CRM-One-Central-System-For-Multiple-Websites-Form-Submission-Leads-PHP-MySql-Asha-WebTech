@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/_bootstrap.php';
 admin_init();
+lh_rm_restore();
 $user = require_login();
 
 $pid = strtoupper(get_str('id', 30));
