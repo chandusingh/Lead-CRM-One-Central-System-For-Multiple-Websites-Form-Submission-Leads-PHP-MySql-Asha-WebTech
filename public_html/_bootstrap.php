@@ -324,13 +324,29 @@ if (strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false) {
         if (stripos($html, 'name="theme-color"') === false) {
             $tags .= '<meta name="theme-color" content="#ffffff">' . "\n";
         }
-        if (!preg_match('/rel=["\'](shortcut )?icon["\']/i', $html)) {
-            $tags .= '<link rel="icon" type="image/svg+xml" href="' . $a . 'favicon.svg">' . "\n"
-                . '<link rel="icon" type="image/png" sizes="32x32" href="' . $a . 'favicon-32.png">' . "\n"
-                . '<link rel="shortcut icon" href="' . lh_base_path() . '/favicon.ico">' . "\n"
-                . '<link rel="apple-touch-icon" href="' . $a . 'apple-touch-icon.png">' . "\n"
-                . '<link rel="manifest" href="' . $a . 'site.webmanifest">' . "\n";
-        }
+        // Always (re)write the icon links so a stale / cached icon set from the core template can never win.
+        $v = '?v=' . (int) @filemtime(__DIR__ . '/assets/logo-full.png');
+        $html = (string) preg_replace('~<link\b[^>]*\brel=["\'](?:shortcut icon|icon|apple-touch-icon(?:-precomposed)?|manifest)["\'][^>]*>\s*~i', '', $html);
+        $tags .= '<link rel="icon" type="image/svg+xml" href="' . $a . 'favicon.svg' . $v . '">' . "\n"
+            . '<link rel="icon" type="image/png" sizes="32x32" href="' . $a . 'favicon-32.png' . $v . '">' . "\n"
+            . '<link rel="shortcut icon" href="' . lh_base_path() . '/favicon.ico' . $v . '">' . "\n"
+            . '<link rel="apple-touch-icon" href="' . $a . 'apple-touch-icon.png' . $v . '">' . "\n"
+            . '<link rel="manifest" href="' . $a . 'site.webmanifest' . $v . '">' . "\n";
+
+        // Branding: replace the text / initials badge in the sidebar + mobile bar with the real logo.
+        $logo = '<img class="brand-img" src="' . $a . 'logo-full.png' . $v . '" alt="Asha WebTech IT Solution Pvt Ltd" width="160" height="100" style="display:block;height:auto;max-width:100%">'
+            . '<span class="brand-sub">Lead CRM</span>';
+        $html = (string) preg_replace_callback(
+            '~(<(a|div)\b[^>]*\bclass=["\'](?:[^"\']*\s)?brand(?:\s[^"\']*)?["\'][^>]*>)(.*?)(</\2>)~is',
+            static function (array $m) use ($logo): string {
+                if (strpos($m[1], 'brand-lg') !== false || stripos($m[3], '<img') !== false
+                    || stripos($m[3], '<div') !== false || stripos($m[3], '<a ') !== false) {
+                    return $m[0];
+                }
+                return $m[1] . $logo . $m[4];
+            },
+            $html
+        );
         return $tags === '' ? $html : preg_replace('~</head>~i', $tags . '</head>', $html, 1);
     });
 }
