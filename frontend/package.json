@@ -1,0 +1,14 @@
+{
+  "name": "asha-leadcrm-ui",
+  "private": true,
+  "description": "Trimmed TailAdmin (free, MIT) UI source for the Asha WebTech Lead CRM admin panel.",
+  "scripts": {
+    "build": "tailwindcss -i src/app.css -o ../assets/app.css --minify",
+    "watch": "tailwindcss -i src/app.css -o ../assets/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "@tailwindcss/forms": "^0.5.9",
+    "tailwindcss": "^4.1.0"
+  }
+}

@@ -135,36 +135,76 @@
       });
     });
 
-    /* ---- Mobile / tablet slide-out sidebar ---- */
-    var sidebar = document.querySelector('.sidebar');
+    /* ---- Sidebar: slide-out on < 1280px, collapsible rail on desktop (remembered) ---- */
+    var sidebar = document.querySelector('.ta-sidebar') || document.querySelector('.sidebar');
     var toggles = document.querySelectorAll('[data-sidebar-toggle]');
-    var narrow = window.matchMedia ? window.matchMedia('(max-width: 960px)') : null;
+    var narrow = window.matchMedia ? window.matchMedia('(max-width: 1279px)') : null;
+    var isNarrow = function () { return narrow ? narrow.matches : window.innerWidth < 1280; };
+    try { if (localStorage.getItem('lhSidebar') === 'collapsed') body.classList.add('sidebar-collapsed'); } catch (e) {}
     function syncSidebar() {
       var open = body.classList.contains('sidebar-open');
-      toggles.forEach(function (b) { b.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+      var expanded = isNarrow() ? open : !body.classList.contains('sidebar-collapsed');
+      toggles.forEach(function (b) { b.setAttribute('aria-expanded', expanded ? 'true' : 'false'); });
       if (sidebar) {
         // off-canvas links must not be reachable by keyboard / screen reader while closed
-        if (narrow && narrow.matches && !open) sidebar.setAttribute('inert', ''); else sidebar.removeAttribute('inert');
+        if (isNarrow() && !open) sidebar.setAttribute('inert', ''); else sidebar.removeAttribute('inert');
       }
     }
     function closeSidebar() { body.classList.remove('sidebar-open'); syncSidebar(); }
     toggles.forEach(function (b) {
-      b.setAttribute('aria-controls', 'sidebar');
       b.addEventListener('click', function () {
-        body.classList.toggle('sidebar-open');
+        if (isNarrow()) {
+          body.classList.toggle('sidebar-open');
+          if (body.classList.contains('sidebar-open') && sidebar) {
+            var first = sidebar.querySelector('a.menu-item-active, nav a');
+            if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 60);
+          }
+        } else {
+          var c = body.classList.toggle('sidebar-collapsed');
+          try { localStorage.setItem('lhSidebar', c ? 'collapsed' : 'open'); } catch (e) {}
+        }
         syncSidebar();
-        if (body.classList.contains('sidebar-open') && sidebar) {
-          var first = sidebar.querySelector('.side-nav a.active, .side-nav a');
-          if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 60);
-        } else { b.focus(); }
       });
     });
-    if (sidebar && !sidebar.id) sidebar.id = 'sidebar';
-    if (narrow && narrow.addEventListener) narrow.addEventListener('change', function () { if (!narrow.matches) body.classList.remove('sidebar-open'); syncSidebar(); });
+    if (narrow && narrow.addEventListener) narrow.addEventListener('change', function () { body.classList.remove('sidebar-open'); syncSidebar(); });
     syncSidebar();
-    document.querySelectorAll('.side-nav a').forEach(function (a) { a.addEventListener('click', closeSidebar); });
-    document.querySelectorAll('.sidebar-scrim').forEach(function (s) { s.addEventListener('click', closeSidebar); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && body.classList.contains('sidebar-open')) closeSidebar(); });
+    document.querySelectorAll('.ta-sidebar nav a, .side-nav a').forEach(function (a) { a.addEventListener('click', closeSidebar); });
+    document.querySelectorAll('[data-sidebar-scrim], .sidebar-scrim').forEach(function (s) { s.addEventListener('click', closeSidebar); });
+
+    /* ---- User menu (header dropdown) ---- */
+    document.querySelectorAll('[data-menu-root]').forEach(function (root) {
+      var btn = root.querySelector('[data-menu-toggle]'), menu = root.querySelector('[data-menu]');
+      if (!btn || !menu) return;
+      function setOpen(on, focus) {
+        menu.hidden = !on; btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        if (on) { var f = menu.querySelector('[role=menuitem]'); if (f && focus) f.focus(); } else if (focus) btn.focus();
+      }
+      btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(menu.hidden, false); });
+      document.addEventListener('click', function (e) { if (!menu.hidden && !root.contains(e.target)) setOpen(false, false); });
+      root.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !menu.hidden) { e.stopPropagation(); setOpen(false, true); }
+        if (e.key === 'ArrowDown' && menu.hidden && e.target === btn) { e.preventDefault(); setOpen(true, true); }
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !menu.hidden && e.target !== btn) {
+          e.preventDefault();
+          var items = Array.prototype.slice.call(menu.querySelectorAll('[role=menuitem]')), i = items.indexOf(document.activeElement);
+          items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+        }
+      });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('.modal-root')) return;
+      if (body.classList.contains('sidebar-open')) closeSidebar();
+    });
+
+    /* ---- Show / hide password ---- */
+    document.querySelectorAll('[data-toggle-password]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var inp = b.parentNode.querySelector('input'); if (!inp) return;
+        var show = inp.type === 'password'; inp.type = show ? 'text' : 'password';
+        b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      });
+    });
 
     /* ---- Confirm before destructive buttons (works with formaction / name=value buttons) ---- */
     document.querySelectorAll('[data-confirm-click]').forEach(function (btn) {
@@ -249,13 +289,15 @@
       document.querySelectorAll('.btn.is-loading').forEach(function (b) { b.classList.remove('is-loading'); });
     });
 
-    /* ---- Keyboard: "/" jumps to search ---- */
+    /* ---- Keyboard: "/" or Ctrl/Cmd+K jumps to search ---- */
     document.addEventListener('keydown', function (e) {
-      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      var k = (e.key || '').toLowerCase();
+      var combo = (e.ctrlKey || e.metaKey) && k === 'k';
+      if (!combo && (k !== '/' || e.ctrlKey || e.metaKey || e.altKey)) return;
       var t = e.target;
-      if (t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable)) return;
-      var s = document.querySelector('input[type=search]');
-      if (s) { e.preventDefault(); s.focus(); s.select(); }
+      if (!combo && t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable)) return;
+      var s = document.querySelector('[data-header-search]') || document.querySelector('input[type=search]');
+      if (s && s.offsetParent !== null) { e.preventDefault(); s.focus(); s.select(); }
     });
 
     /* ---- Keep the session alive while a CRM tab is open (never auto sign-out) ---- */

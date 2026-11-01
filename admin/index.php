@@ -122,7 +122,8 @@ page_header('Dashboard', 'dashboard');
 <section class="stats" data-testid="dashboard-stats">
   <?php foreach ($cards as $i => [$key, $label, $val, $href, $hint]): ?>
     <a class="stat stat-<?= e($key) ?> reveal" href="<?= e($href) ?>" data-delay="<?= $i ?>" data-testid="stat-<?= e($key) ?>">
-      <span class="stat-top"><span class="stat-label"><?= e($label) ?></span><span class="stat-ico"><?= lxd_ico($key) ?></span></span>
+      <span class="stat-ico"><?= lxd_ico($key) ?></span>
+      <span class="stat-label"><?= e($label) ?></span>
       <span class="stat-value" data-testid="stat-<?= e($key) ?>-value"><?= number_format((int) $val) ?></span>
       <span class="stat-hint"><?= e($hint) ?></span>
     </a>

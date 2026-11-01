@@ -75,29 +75,38 @@ $resendIn = max(0, LH_OTP_RESEND_WAIT - (time() - (int) ($p['sent'] ?? 0)));
 page_header('Verify sign-in');
 ?>
 <div class="login-wrap">
-  <section class="login-aside">
-    <a class="brand-logo" href="<?= e(lh_base_path()) ?>/admin/" aria-label="Asha WebTech IT Solution Pvt Ltd"><img class="login-logo" src="<?= e(lh_base_path()) ?>/assets/logo-full.png" alt="Asha WebTech IT Solution Pvt Ltd" width="300" height="188"></a>
-    <h1 class="login-title">One more step<br>to keep your<br>leads safe.</h1>
-    <p class="muted">We sent a 6-digit code by SMS. It is valid for <?= (int) (LH_OTP_TTL / 60) ?> minutes.</p>
+  <section class="login-form-side">
+    <div class="mx-auto w-full max-w-md pt-2 sm:pt-6 lg:hidden">
+      <a href="<?= e(lh_base_path()) ?>/admin/" aria-label="Asha WebTech IT Solution Pvt Ltd"><img class="login-logo" src="<?= e(lh_base_path()) ?>/assets/logo-full.png" alt="Asha WebTech IT Solution Pvt Ltd" width="172" height="108"></a>
+    </div>
+    <div class="login-card mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
+      <h1>Enter your OTP</h1>
+      <p class="login-sub">Code sent to <strong class="font-medium text-gray-800"><?= e(lh_otp_mask((string) ($p['mobile'] ?? ''))) ?></strong>. It is valid for <?= (int) (LH_OTP_TTL / 60) ?> minutes.</p>
+      <?php if ($error): ?>
+        <div class="flash flash-error" role="alert" data-testid="otp-error"><?= e($error) ?></div>
+      <?php elseif ($notice): ?>
+        <div class="flash flash-success" role="status" data-testid="otp-notice"><?= e($notice) ?></div>
+      <?php endif; ?>
+      <form method="post" action="verify_otp.php" class="stack" data-testid="otp-form">
+        <?= csrf_field() ?><input type="hidden" name="action" value="verify">
+        <label>6-digit code <input type="text" name="otp" inputmode="numeric" pattern="[0-9]*" maxlength="6" minlength="6" autocomplete="one-time-code" required autofocus placeholder="••••••" class="!h-14 text-center !text-2xl tracking-[.45em]" data-testid="otp-input"></label>
+        <button type="submit" class="btn btn-primary btn-block" data-testid="otp-submit-button">Verify &amp; sign in</button>
+      </form>
+      <form method="post" action="verify_otp.php" class="stack mt-3">
+        <?= csrf_field() ?><input type="hidden" name="action" value="resend">
+        <button type="submit" class="btn btn-block" id="resend-btn" data-testid="otp-resend-button" <?= $resendIn > 0 ? 'disabled' : '' ?>>Resend code<?= $resendIn > 0 ? ' (' . $resendIn . 's)' : '' ?></button>
+      </form>
+      <p class="mt-5 text-sm"><a href="login.php">&larr; Back to sign in</a></p>
+    </div>
   </section>
-  <section class="login-card">
-    <h2>Enter your OTP</h2>
-    <p class="muted small">Code sent to <strong><?= e(lh_otp_mask((string) ($p['mobile'] ?? ''))) ?></strong></p>
-    <?php if ($error): ?>
-      <div class="flash flash-error" role="alert" data-testid="otp-error"><?= e($error) ?></div>
-    <?php elseif ($notice): ?>
-      <div class="flash flash-success" role="status" data-testid="otp-notice"><?= e($notice) ?></div>
-    <?php endif; ?>
-    <form method="post" action="verify_otp.php" class="stack" data-testid="otp-form">
-      <?= csrf_field() ?><input type="hidden" name="action" value="verify">
-      <label>6-digit code<input type="text" name="otp" inputmode="numeric" pattern="[0-9]*" maxlength="6" minlength="6" autocomplete="one-time-code" required autofocus style="letter-spacing:.4em;font-size:1.4rem;text-align:center" data-testid="otp-input"></label>
-      <button type="submit" class="btn btn-primary btn-block" data-testid="otp-submit-button">Verify &amp; sign in</button>
-    </form>
-    <form method="post" action="verify_otp.php" class="stack" style="margin-top:.75rem">
-      <?= csrf_field() ?><input type="hidden" name="action" value="resend">
-      <button type="submit" class="btn btn-block" id="resend-btn" data-testid="otp-resend-button" <?= $resendIn > 0 ? 'disabled' : '' ?>>Resend code<?= $resendIn > 0 ? ' (' . $resendIn . 's)' : '' ?></button>
-    </form>
-    <p class="small muted" style="margin-top:.75rem"><a href="login.php">&larr; Back to sign in</a></p>
+  <section class="login-cover" aria-hidden="true">
+    <div class="pointer-events-none absolute top-0 right-0 w-full max-w-62.5 xl:max-w-112.5"><img src="<?= e(lh_base_path()) ?>/assets/grid-shape.svg" alt="" width="450" height="254"></div>
+    <div class="pointer-events-none absolute bottom-0 left-0 w-full max-w-62.5 rotate-180 xl:max-w-112.5"><img src="<?= e(lh_base_path()) ?>/assets/grid-shape.svg" alt="" width="450" height="254"></div>
+    <div class="login-cover-card">
+      <div class="mb-8 rounded-2xl bg-white p-5 shadow-theme-xl"><img src="<?= e(lh_base_path()) ?>/assets/logo-full.png" alt="" width="190" height="119" class="h-auto w-44"></div>
+      <h2 class="mb-3 text-title-md font-semibold text-white">One more step to keep your leads safe.</h2>
+      <p class="text-sm leading-6 text-gray-400">We sent a 6-digit code by SMS. Enter it to finish signing in.</p>
+    </div>
   </section>
 </div>
 <script>

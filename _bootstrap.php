@@ -311,6 +311,8 @@ function lh_otp_start(array $user, bool $keepWindow = false): array
 // Admin HTML post-processing: favicon / app icons / mobile viewport / theme colour are injected
 // into <head> of every admin page (login included) without touching the core templates.
 // ---------------------------------------------------------------------------------------------
+require_once __DIR__ . '/_ui.php';
+
 if (strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false) {
     ob_start(static function (string $html): string {
         if (stripos($html, '</head>') === false) {
@@ -333,9 +335,22 @@ if (strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false) {
             . '<link rel="apple-touch-icon" href="' . $a . 'apple-touch-icon.png' . $v . '">' . "\n"
             . '<link rel="manifest" href="' . $a . 'site.webmanifest' . $v . '">' . "\n";
 
-        // Branding: replace the text / initials badge in the sidebar + mobile bar with the real logo.
+        // Stylesheet + script: always load the current files under a version tag, so a cached / not-yet-overwritten
+        // admin.css can never leave the panel unstyled. The core template's own admin.css link is replaced.
+        $html = (string) preg_replace('~<link\b[^>]*\bhref=["\'][^"\']*assets/admin\.css[^"\']*["\'][^>]*>\s*~i', '', $html);
+        $css = is_file(__DIR__ . '/assets/app.css') ? 'app.css' : 'admin.css'; // admin.css is an identical copy
+        $tags .= '<link rel="stylesheet" href="' . $a . $css . '?v=' . (int) @filemtime(__DIR__ . '/assets/' . $css) . '">' . "\n";
+        $html = (string) preg_replace('~(assets/admin\.js)(\?[^"\']*)?~i', '$1?v=' . (int) @filemtime(__DIR__ . '/assets/admin.js'), $html);
+
+        // TailAdmin shell: replaces the legacy sidebar / mobile bar (no-op if the markup is not recognised).
+        $shelled = lh_ui_shell($html);
+        $swapped = $shelled !== $html;
+        $html = $shelled;
+
+        // Fallback branding for the legacy sidebar (only if the shell swap did not apply).
         $logo = '<img class="brand-img" src="' . $a . 'logo-full.png' . $v . '" alt="Asha WebTech IT Solution Pvt Ltd" width="160" height="100" style="display:block;height:auto;max-width:100%">'
             . '<span class="brand-sub">Lead CRM</span>';
+        if (!$swapped) {
         $html = (string) preg_replace_callback(
             '~(<(a|div)\b[^>]*\bclass=["\'](?:[^"\']*\s)?brand(?:\s[^"\']*)?["\'][^>]*>)(.*?)(</\2>)~is',
             static function (array $m) use ($logo): string {
@@ -347,6 +362,7 @@ if (strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false) {
             },
             $html
         );
+        }
         return $tags === '' ? $html : preg_replace('~</head>~i', $tags . '</head>', $html, 1);
     });
 }
