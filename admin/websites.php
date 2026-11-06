@@ -49,6 +49,7 @@ page_header('Websites', 'websites');
         <td class="actions" data-label="">
           <a class="btn btn-sm" href="website_key.php?id=<?= (int) $w['id'] ?>" data-testid="website-integration-link-<?= (int) $w['id'] ?>">API &amp; setup</a>
           <a class="btn btn-sm" href="website_edit.php?id=<?= (int) $w['id'] ?>" data-testid="website-edit-link-<?= (int) $w['id'] ?>">Edit</a>
+          <a class="btn btn-sm" href="security_site.php?id=<?= (int) $w['id'] ?>" data-testid="website-security-link-<?= (int) $w['id'] ?>">Security</a>
           <form method="post" action="websites.php" class="inline" data-confirm="<?= (int) $w['is_active'] ? 'Deactivate this website? Its submissions will be rejected.' : 'Activate this website?' ?>">
             <?= csrf_field() ?><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="<?= (int) $w['id'] ?>">
             <button class="btn btn-sm <?= (int) $w['is_active'] ? 'btn-danger-ghost' : '' ?>" data-testid="website-toggle-<?= (int) $w['id'] ?>"><?= (int) $w['is_active'] ? 'Deactivate' : 'Activate' ?></button>

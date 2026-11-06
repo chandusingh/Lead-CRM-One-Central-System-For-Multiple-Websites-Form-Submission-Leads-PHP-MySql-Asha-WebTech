@@ -313,6 +313,9 @@ function lh_otp_start(array $user, bool $keepWindow = false): array
 // ---------------------------------------------------------------------------------------------
 require_once __DIR__ . '/_ui.php';
 
+// Centralized Security Engine (guard for /api/v1/leads + helpers used by the admin Security pages).
+require_once __DIR__ . '/_security.php';
+
 if (strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false) {
     ob_start(static function (string $html): string {
         if (stripos($html, '</head>') === false) {

@@ -15,6 +15,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     exit;
 }
 
+// Centralized Security Engine (see _security.php): inspects every submission for every registered website.
+// It may block (clearly malicious) or quarantine (suspicious) the request; otherwise it simply returns and the
+// core below handles the request exactly as before. It fails open, so an engine problem can never stop leads.
+// It must run BEFORE the Origin/Referer headers are hidden below because it uses them for bot detection.
+lh_sec_guard();
+
 // Hide the browser's Origin/Referer from the legacy origin check in inc/api.php, so it
 // never rejects a site. Requires websites.allow_no_origin = 1 (set by the SQL migration).
 $_SERVER['LH_ORIGIN_SEEN'] = $_SERVER['HTTP_ORIGIN'] ?? '';

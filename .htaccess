@@ -19,7 +19,7 @@ AddDefaultCharset UTF-8
     RewriteRule ^api/v1/leads/?$ api/v1/leads.php [L,QSA]
 </IfModule>
 
-<FilesMatch "(^_bootstrap\.php$|\.(ini|log|sql|sh|bak|env|dist|lock|md|gz|json)$)">
+<FilesMatch "(^_bootstrap\.php$|^_security(_admin)?\.php$|\.(ini|log|sql|sh|bak|env|dist|lock|md|gz|json)$)">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
