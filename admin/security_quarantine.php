@@ -14,7 +14,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $action = post_str('action', 20);
     $note = post_str('note', 300);
     $return = post_str('return', 600);
-    if (!preg_match('/^security_quarantine\.php(\?[A-Za-z0-9_=&%.\-+:]*)?$/', $return)) {
+    if (!preg_match('/^security_quarantine\.php(\?[A-Za-z0-9_=&%.\-+:*~]*)?$/', $return)) {
         $return = 'security_quarantine.php';
     }
 
@@ -191,7 +191,7 @@ page_header('Quarantine', 'settings');
   <?php endforeach; ?>
 </nav>
 
-<form class="filters panel filters-open" method="get" action="security_quarantine.php" data-testid="quarantine-filters" style="grid-template-columns:2fr 1fr 1fr auto">
+<form class="filters filters-q panel filters-open" method="get" action="security_quarantine.php" data-testid="quarantine-filters">
   <input type="hidden" name="status" value="<?= e($f['status']) ?>">
   <label class="f-q">Search<input type="search" name="q" value="<?= e($f['q']) ?>" placeholder="IP, reference, reason or any field value"></label>
   <label>Website<select name="website"><option value="">All websites</option>

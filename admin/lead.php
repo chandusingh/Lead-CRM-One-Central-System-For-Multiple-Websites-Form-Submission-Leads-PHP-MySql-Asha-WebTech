@@ -107,7 +107,7 @@ page_header($lead['public_id'], 'leads');
 <div class="lead-layout">
   <div class="stack-lg">
     <section class="panel" data-testid="lead-fields">
-      <div class="panel-head"><h2>Submitted fields</h2><span class="muted small"><?= count(lh_leaves($fields)) ?> values</span></div>
+      <div class="panel-head"><h2>Submitted fields</h2><span class="muted small"><?php $nv = count(lh_leaves($fields)); ?><?= $nv ?> value<?= $nv === 1 ? '' : 's' ?></span></div>
       <?= render_kv($fields) ?>
     </section>
 
@@ -155,7 +155,7 @@ page_header($lead['public_id'], 'leads');
       <p class="small <?= $due ? 'due' : 'muted' ?>" data-testid="lead-followup-value"><?= $lead['follow_up_at'] ? 'Scheduled for ' . e(fmt_dt($lead['follow_up_at'])) : 'No follow-up scheduled.' ?></p>
       <form method="post" action="<?= e($self) ?>" class="stack" data-testid="followup-form">
         <?= csrf_field() ?><input type="hidden" name="action" value="followup">
-        <input type="datetime-local" name="follow_up_at" value="<?= e(fmt_dt($lead['follow_up_at'], 'Y-m-d\TH:i')) ?>" data-testid="followup-input">
+        <input type="datetime-local" name="follow_up_at" value="<?= $lead['follow_up_at'] ? e(fmt_dt($lead['follow_up_at'], 'Y-m-d\TH:i')) : '' ?>" data-testid="followup-input">
         <div class="row-gap">
           <button class="btn btn-primary btn-sm" data-testid="followup-save-button">Save follow-up</button>
           <?php if ($lead['follow_up_at']): ?><button class="btn btn-sm" name="clear" value="1" formnovalidate data-testid="followup-clear-button">Clear</button><?php endif; ?>

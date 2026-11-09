@@ -92,9 +92,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 $oc = lh_otp_config();
 $otpReady = lh_otp_ready();
 $c = smtp_config();
-$enabled = setting('notify_enabled') === '1';
-$hasPw = setting('smtp_password') !== '';
-$recips = setting('notify_recipients');
+$enabled = (string) setting('notify_enabled') === '1';
+$hasPw = (string) setting('smtp_password') !== '';
+$recips = (string) setting('notify_recipients');
 $lastFail = db_one('SELECT public_id, notify_error FROM leads WHERE notify_error IS NOT NULL ORDER BY id DESC LIMIT 1');
 $sent = (int) db_val('SELECT COUNT(*) FROM leads WHERE notified_at IS NOT NULL');
 

@@ -13,7 +13,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 require_csrf();
 
 $return = post_str('return', 600);
-if (!preg_match('/^leads\.php(\?[A-Za-z0-9_=&%.\-+:]*)?$/', $return)) {
+if (!preg_match('/^leads\.php(\?[A-Za-z0-9_=&%.\-+:*~]*)?$/', $return)) {
     $return = 'leads.php';
 }
 
@@ -55,8 +55,8 @@ if ($action === 'delete') {
         log_event('info', 'lead.deleted', ['lead_id' => $l['public_id'], 'user_id' => (int) $user['id']]);
     }
     flash('success', count($leads) === 1 ? 'Lead ' . $leads[0]['public_id'] . ' deleted.' : count($leads) . ' leads deleted.');
-    // A deleted lead's own page no longer exists, so single deletes always go back to the inbox.
-    redirect(count($ids) === 1 ? 'leads.php' : $return);
+    // $return is always the inbox (never a lead page), so filters are kept after single and bulk deletes.
+    redirect($return);
 }
 
 if ($action === 'status') {

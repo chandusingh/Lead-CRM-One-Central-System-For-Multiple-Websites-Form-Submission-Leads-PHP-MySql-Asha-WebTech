@@ -109,12 +109,15 @@
         if (!el) return;
         var text = el.textContent;
         var done = function () { var t = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(function () { btn.textContent = t; }, 1400); };
-        if (navigator.clipboard && window.isSecureContext) {
-          navigator.clipboard.writeText(text).then(done);
-        } else {
+        var legacy = function () {
           var r = document.createRange(); r.selectNodeContents(el);
           var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
           try { document.execCommand('copy'); done(); } catch (e) {}
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(done, legacy);
+        } else {
+          legacy();
         }
       });
     });
@@ -233,7 +236,7 @@
       if (counter) counter.textContent = n;
       if (bar) bar.hidden = n === 0;
       if (all) { all.checked = n > 0 && n === checks.length; all.indeterminate = n > 0 && n < checks.length; }
-      checks.forEach(function (c) { var tr = c.closest('tr'); if (tr) tr.style.background = c.checked ? 'var(--accent-soft)' : ''; });
+      checks.forEach(function (c) { var tr = c.closest('tr'); if (tr) tr.style.background = c.checked ? 'var(--color-brand-50, #eff6ff)' : ''; });
     }
     if (all) all.addEventListener('change', function () { checks.forEach(function (c) { c.checked = all.checked; }); syncBulk(); });
     checks.forEach(function (c) { c.addEventListener('change', syncBulk); });

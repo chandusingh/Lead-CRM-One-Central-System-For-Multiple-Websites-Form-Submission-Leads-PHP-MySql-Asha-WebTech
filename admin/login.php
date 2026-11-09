@@ -24,7 +24,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         log_event('warning', 'auth.login_throttled', ['ip' => client_ip()]);
     } else {
         $user = $email !== '' ? db_one('SELECT * FROM users WHERE email = ?', [$email]) : null;
-        $hash = $user['password_hash'] ?? password_hash(random_bytes(8), PASSWORD_DEFAULT);
+        // Dummy hash keeps timing similar for unknown emails (hex: bcrypt rejects NUL bytes on PHP 8.4+).
+        $hash = (string) ($user['password_hash'] ?? password_hash(bin2hex(random_bytes(8)), PASSWORD_DEFAULT));
         if ($user && (int) $user['is_active'] === 1 && password_verify($password, $hash)) {
             if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
                 db_exec('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), (int) $user['id']]);

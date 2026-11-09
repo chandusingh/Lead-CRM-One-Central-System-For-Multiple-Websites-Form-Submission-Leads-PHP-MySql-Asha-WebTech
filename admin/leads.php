@@ -92,11 +92,11 @@ page_header('Leads', 'leads');
 </div>
 
 <nav class="site-tabs" data-testid="website-tabs">
-  <a href="leads.php" class="<?= $f['website'] ? '' : 'on' ?>">All websites</a>
-  <?php foreach ($websites as $w): ?><a href="leads.php?website=<?= (int) $w['id'] ?>" class="<?= $f['website'] === (int) $w['id'] ? 'on' : '' ?>"><?= e($w['name']) ?></a><?php endforeach; ?>
+  <a href="leads.php" class="<?= $f['website'] ? '' : 'on' ?>" data-testid="website-tab-all">All websites</a>
+  <?php foreach ($websites as $w): ?><a href="leads.php?website=<?= (int) $w['id'] ?>" class="<?= $f['website'] === (int) $w['id'] ? 'on' : '' ?>" data-testid="website-tab-<?= (int) $w['id'] ?>"><?= e($w['name']) ?></a><?php endforeach; ?>
 </nav>
 
-<button type="button" class="btn filters-toggle" data-toggle-class="filters-open" data-target=".filters" aria-expanded="false">Search &amp; filters<?= $active ? ' • active' : '' ?></button>
+<button type="button" class="btn filters-toggle" data-toggle-class="filters-open" data-target=".filters" aria-expanded="false" data-testid="filters-toggle-button">Search &amp; filters<?= $active ? ' • active' : '' ?></button>
 <form class="filters panel<?= $active ? ' filters-open' : '' ?>" method="get" action="leads.php" data-testid="leads-filter-form">
   <label class="f-q">Search<input type="search" name="q" value="<?= e($f['q']) ?>" placeholder="Search any field value, lead ID, website…" data-testid="leads-search-input"></label>
   <label>Website<select name="website" data-testid="filter-website">
@@ -130,27 +130,27 @@ page_header('Leads', 'leads');
   <div class="empty" data-testid="leads-empty"><h2>No leads found</h2><p class="muted">Try a different search or clear the filters.</p></div>
 <?php else: ?>
   <form method="post" action="leads_bulk.php" id="bulk-form" data-testid="bulk-form">
-    <?= csrf_field() ?><input type="hidden" name="return" value="<?= e('leads.php' . ($_SERVER['QUERY_STRING'] ?? '' ? '?' . $_SERVER['QUERY_STRING'] : '')) ?>">
+    <?= csrf_field() ?><input type="hidden" name="return" value="<?= e('leads.php' . ((string) ($_SERVER['QUERY_STRING'] ?? '') !== '' ? '?' . $_SERVER['QUERY_STRING'] : '')) ?>">
     <div class="bulk-bar" id="bulk-bar" hidden data-testid="bulk-bar">
       <strong><span id="bulk-count">0</span> selected</strong>
-      <select name="status" aria-label="New status"><?php foreach (LH_STATUSES as $k => $v): ?><option value="<?= e($k) ?>"><?= e($v) ?></option><?php endforeach; ?></select>
+      <select name="status" aria-label="New status" data-testid="bulk-status-select"><?php foreach (LH_STATUSES as $k => $v): ?><option value="<?= e($k) ?>"><?= e($v) ?></option><?php endforeach; ?></select>
       <button class="btn btn-sm" name="action" value="status" data-testid="bulk-status-button">Set status</button>
       <?php if (is_admin()): ?><button class="btn btn-sm btn-danger" name="action" value="delete" data-confirm-click="Delete the selected leads permanently? This cannot be undone." data-testid="bulk-delete-button">Delete selected</button><?php endif; ?>
     </div>
   <div class="table-wrap"><table class="table table-hover table-cards" data-testid="leads-table">
     <thead><tr><th class="sel"><input type="checkbox" id="select-all" aria-label="Select all leads on this page" data-testid="select-all"></th><th>Lead ID</th><th>Received</th><?php if (!$f['website']): ?><th>Website</th><?php endif; ?><th>Channel</th>
-      <?php if ($dynCols): foreach ($dynCols as $c): ?><th><?= e(lx_label($c)) ?></th><?php endforeach; else: ?><th>Contact</th><th>Details</th><?php endif; ?>
+      <?php if ($dynCols): foreach ($dynCols as $c): ?><th><?= e(lx_label((string) $c)) ?></th><?php endforeach; else: ?><th>Contact</th><th>Details</th><?php endif; ?>
       <th>Status</th><th>Follow-up</th><th class="actions-col"></th></tr></thead>
     <tbody>
-    <?php foreach ($rows as $r): $due = $r['follow_up_at'] && $r['follow_up_at'] <= $nowUtc && !in_array($r['status'], ['converted', 'lost'], true); $pf = lx_fields($r['payload']); ?>
+    <?php foreach ($rows as $r): $due = $r['follow_up_at'] && $r['follow_up_at'] <= $nowUtc && !in_array($r['status'], ['converted', 'lost'], true); $pf = lx_fields($r['payload']); foreach (['name', 'email', 'phone'] as $col) { if (!empty($r[$col]) && !array_key_exists($col, $pf)) $pf[$col] = $r[$col]; } ?>
       <tr data-testid="lead-row-<?= e($r['public_id']) ?>" data-href="lead.php?id=<?= e(urlencode($r['public_id'])) ?>">
-        <td class="sel" data-label=""><input type="checkbox" name="ids[]" value="<?= e($r['public_id']) ?>" class="row-check" aria-label="Select <?= e($r['public_id']) ?>"></td>
+        <td class="sel" data-label=""><input type="checkbox" name="ids[]" value="<?= e($r['public_id']) ?>" class="row-check" aria-label="Select <?= e($r['public_id']) ?>" data-testid="lead-check-<?= e($r['public_id']) ?>"></td>
         <td data-label="Lead ID"><a class="mono" href="lead.php?id=<?= e(urlencode($r['public_id'])) ?>" data-testid="lead-link-<?= e($r['public_id']) ?>"><?= e($r['public_id']) ?></a>
           <?php if ((int) $r['duplicate_count'] > 0): ?><span class="badge badge-muted" title="Duplicate submissions merged">+<?= (int) $r['duplicate_count'] ?></span><?php endif; ?></td>
         <td class="small nowrap" data-label="Received" title="<?= e(fmt_dt($r['created_at'])) ?>"><?= e(fmt_dt($r['created_at'], 'd M, H:i')) ?></td>
         <?php if (!$f['website']): ?><td data-label="Website"><?= e($r['website']) ?></td><?php endif; ?>
         <td data-label="Channel"><?= channel_badge($r['channel']) ?></td>
-        <?php if ($dynCols): foreach ($dynCols as $c): ?><td class="small cell" data-label="<?= e(lx_label($c)) ?>"><?= e(lx_cell($pf[$c] ?? null)) ?: '<span class="muted">—</span>' ?></td><?php endforeach; else:
+        <?php if ($dynCols): foreach ($dynCols as $c): ?><td class="small cell" data-label="<?= e(lx_label((string) $c)) ?>"><?= e(lx_cell($pf[$c] ?? null)) ?: '<span class="muted">—</span>' ?></td><?php endforeach; else:
             $shown = 0; $chips = []; foreach ($pf as $k => $val) { $t = lx_cell($val); if ($t === '') continue; $chips[] = '<span class="chip"><b>' . e(lx_label((string) $k)) . '</b> ' . e($t) . '</span>'; if (++$shown >= 5) break; } ?>
           <td class="small" data-label="Contact"><strong><?= e($r['name'] ?: '—') ?></strong><div class="muted"><?= e($r['email'] ?: $r['phone'] ?: '') ?></div></td>
           <td class="small chips" data-label="Details"><?= $chips ? implode('', $chips) : '<span class="muted">—</span>' ?></td>

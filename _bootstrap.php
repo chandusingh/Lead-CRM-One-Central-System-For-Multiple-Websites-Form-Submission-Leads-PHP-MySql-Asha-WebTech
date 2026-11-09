@@ -230,7 +230,9 @@ function lh_otp_send(string $mobile, string $otp, array $cfg): array
         $res = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err = curl_error($ch);
-        curl_close($ch);
+        if (PHP_VERSION_ID < 80000) {
+            curl_close($ch); // no-op since PHP 8.0, deprecated in 8.5
+        }
         $body = is_string($res) ? $res : '';
     } else {
         $ctx = stream_context_create(['http' => [
